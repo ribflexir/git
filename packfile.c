@@ -737,6 +737,12 @@ struct packed_git *add_packed_git(struct repository *r, const char *path,
 	p = alloc_packed_git(r, alloc);
 	memcpy(p->pack_name, path, path_len);
 
+	xsnprintf(p->pack_name + path_len, alloc - path_len, ".pack");
+	if (stat(p->pack_name, &st) || !S_ISREG(st.st_mode)) {
+		free(p);
+		return NULL;
+	}
+
 	xsnprintf(p->pack_name + path_len, alloc - path_len, ".keep");
 	if (!access(p->pack_name, F_OK))
 		p->pack_keep = 1;
@@ -749,11 +755,8 @@ struct packed_git *add_packed_git(struct repository *r, const char *path,
 	if (!access(p->pack_name, F_OK))
 		p->is_cruft = 1;
 
+	/* Restore the final packfile name. */
 	xsnprintf(p->pack_name + path_len, alloc - path_len, ".pack");
-	if (stat(p->pack_name, &st) || !S_ISREG(st.st_mode)) {
-		free(p);
-		return NULL;
-	}
 
 	/* ok, it looks sane as far as we can check without
 	 * actually mapping the pack file.
